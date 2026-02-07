@@ -1,6 +1,7 @@
+'use server';
+
 import { unstable_cacheLife as cacheLife, unstable_cacheTag as cacheTag } from 'next/cache';
 import { TAGS } from '@/lib/constants';
-'use server';
 import {
   getCollections as getShopifyCollections,
   getProducts as getShopifyProducts,
@@ -25,38 +26,30 @@ import type {
   ProductSortKey,
 } from './types';
 
-// Utility function to extract the first sentence from a description
+/* ---------------- utils ---------------- */
+
 function getFirstSentence(text: string): string {
   if (!text) return '';
-
   const cleaned = text.trim();
   const match = cleaned.match(/^[^.!?]*[.!?]/);
-
-  if (match) {
-    return match[0].trim();
-  }
-
-  if (cleaned.length > 100) {
-    return cleaned.substring(0, 100).trim() + '...';
-  }
-
-  return cleaned;
+  if (match) return match[0].trim();
+  return cleaned.length > 100 ? cleaned.slice(0, 100).trim() + '…' : cleaned;
 }
 
-// Helper functions for consistent data transformation
-
-function transformShopifyMoney(shopifyMoney: { amount: string; currencyCode: string } | undefined): Money {
+function transformShopifyMoney(
+  money?: { amount: string; currencyCode: string }
+): Money {
   return {
-    amount: shopifyMoney?.amount || '0',
-    currencyCode: shopifyMoney?.currencyCode || 'USD',
+    amount: money?.amount ?? '0',
+    currencyCode: money?.currencyCode ?? 'USD',
   };
 }
 
 function transformShopifyOptions(
-  shopifyOptions: Array<{ id?: string; name: string; values: string[] }>
+  options: Array<{ id?: string; name: string; values: string[] }>
 ): ProductOption[] {
-  return shopifyOptions.map(option => ({
-    id: option.id || option.name.toLowerCase().replace(/\s+/g, '-'),
+  return options.map(option => ({
+    id: option.id ?? option.name.toLowerCase().replace(/\s+/g, '-'),
     name: option.name,
     values: option.values.map(value => ({
       id: value.toLowerCase().replace(/\s+/g, '-'),
@@ -65,123 +58,124 @@ function transformShopifyOptions(
   }));
 }
 
-function transformShopifyVariants(shopifyVariants: { edges: Array<{ node: any }> } | undefined): ProductVariant[] {
-  if (!Array.isArray(shopifyVariants?.edges)) return [];
-
-  return shopifyVariants.edges.map(edge => ({
-    id: edge.node.id,
-    title: edge.node.title || '',
-    availableForSale: edge.node.availableForSale !== false,
-    price: transformShopifyMoney(edge.node.price),
-    selectedOptions: edge.node.selectedOptions || [],
+function transformShopifyVariants(
+  variants?: { edges: Array<{ node: any }> }
+): ProductVariant[] {
+  if (!variants?.edges) return [];
+  return variants.edges.map(({ node }) => ({
+    id: node.id,
+    title: node.title ?? '',
+    availableForSale: node.availableForSale !== false,
+    price: transformShopifyMoney(node.price),
+    selectedOptions: node.selectedOptions ?? [],
   }));
 }
 
-// Main adapter functions
-function adaptShopifyCollection(shopifyCollection: ShopifyCollection): Collection {
+/* ---------------- adapters ---------------- */
+
+function adaptShopifyCollection(collection: ShopifyCollection): Collection {
   return {
-    ...shopifyCollection,
+    ...collection,
     seo: {
-      title: shopifyCollection.title,
-      description: shopifyCollection.description || '',
+      title: collection.title,
+      description: collection.description ?? '',
     },
     parentCategoryTree: [],
     updatedAt: new Date().toISOString(),
-    path: `/shop/${shopifyCollection.handle}`,
+    path: `/shop/${collection.handle}`,
   };
 }
 
-function adaptShopifyProduct(shopifyProduct: ShopifyProduct): Product {
-  const firstImage = shopifyProduct.images?.edges?.[0]?.node;
-  const description = getFirstSentence(shopifyProduct.description || '');
+function adaptShopifyProduct(product: ShopifyProduct): Product {
+  const firstImage = product.images?.edges?.[0]?.node;
+  const description = getFirstSentence(product.description ?? '');
 
   return {
-    ...shopifyProduct,
+    ...product,
     description,
-    categoryId: shopifyProduct.productType || shopifyProduct.category?.name,
+    categoryId: product.productType || product.category?.name,
     tags: [],
     availableForSale: true,
-    currencyCode: shopifyProduct.priceRange?.minVariantPrice?.currencyCode || 'USD',
+    currencyCode:
+      product.priceRange?.minVariantPrice?.currencyCode ?? 'USD',
     featuredImage: firstImage
       ? {
           ...firstImage,
-          altText: firstImage.altText || shopifyProduct.title || '',
-          height: 600,
+          altText: firstImage.altText ?? product.title ?? '',
           width: 600,
-          thumbhash: firstImage.thumbhash ? thumbhashToDataURL(firstImage.thumbhash) : undefined,
+          height: 600,
+          thumbhash: firstImage.thumbhash
+            ? thumbhashToDataURL(firstImage.thumbhash)
+            : undefined,
         }
-      : { url: '', altText: '', height: 0, width: 0 },
+      : { url: '', altText: '', width: 0, height: 0 },
     seo: {
-      title: shopifyProduct.title || '',
+      title: product.title ?? '',
       description,
     },
     priceRange: {
-      minVariantPrice: transformShopifyMoney(shopifyProduct.priceRange?.minVariantPrice),
-      maxVariantPrice: transformShopifyMoney(shopifyProduct.priceRange?.minVariantPrice),
+      minVariantPrice: transformShopifyMoney(
+        product.priceRange?.minVariantPrice
+      ),
+      maxVariantPrice: transformShopifyMoney(
+        product.priceRange?.minVariantPrice
+      ),
     },
     compareAtPrice:
-      shopifyProduct.compareAtPriceRange?.minVariantPrice &&
-      parseFloat(shopifyProduct.compareAtPriceRange.minVariantPrice.amount) >
-        parseFloat(shopifyProduct.priceRange?.minVariantPrice?.amount || '0')
-        ? transformShopifyMoney(shopifyProduct.compareAtPriceRange.minVariantPrice)
+      product.compareAtPriceRange?.minVariantPrice &&
+      parseFloat(product.compareAtPriceRange.minVariantPrice.amount) >
+        parseFloat(product.priceRange?.minVariantPrice?.amount ?? '0')
+        ? transformShopifyMoney(
+            product.compareAtPriceRange.minVariantPrice
+          )
         : undefined,
     images:
-      shopifyProduct.images?.edges?.map(edge => ({
-        ...edge.node,
-        altText: edge.node.altText || shopifyProduct.title || '',
-        height: 600,
+      product.images?.edges?.map(({ node }) => ({
+        ...node,
+        altText: node.altText ?? product.title ?? '',
         width: 600,
-        thumbhash: edge.node.thumbhash ? thumbhashToDataURL(edge.node.thumbhash) : undefined,
-      })) || [],
-    options: transformShopifyOptions(shopifyProduct.options || []),
-    variants: transformShopifyVariants(shopifyProduct.variants),
+        height: 600,
+        thumbhash: node.thumbhash
+          ? thumbhashToDataURL(node.thumbhash)
+          : undefined,
+      })) ?? [],
+    options: transformShopifyOptions(product.options ?? []),
+    variants: transformShopifyVariants(product.variants),
   };
 }
 
-// Cart adapting happens in server actions to avoid cyclic deps
+/* ---------------- public api ---------------- */
 
-// Public API functions
 export async function getCollections(): Promise<Collection[]> {
   'use cache';
   cacheTag(TAGS.collections);
   cacheLife('minutes');
 
-  try {
-    const shopifyCollections = await getShopifyCollections();
-    return shopifyCollections.map(adaptShopifyCollection);
-  } catch (error) {
-    console.error('Error fetching collections:', error);
-    return [];
-  }
+  const collections = await getShopifyCollections();
+  return collections.map(adaptShopifyCollection);
 }
 
-export async function getCollection(handle: string): Promise<Collection | null> {
+export async function getCollection(
+  handle: string
+): Promise<Collection | null> {
   'use cache';
   cacheTag(TAGS.collections);
   cacheLife('minutes');
 
-  try {
-    const collections = await getShopifyCollections();
-    const collection = collections.find(collection => collection.handle === handle);
-    return collection ? adaptShopifyCollection(collection) : null;
-  } catch (error) {
-    console.error('Error fetching collection:', error);
-    return null;
-  }
+  const collections = await getShopifyCollections();
+  const found = collections.find(c => c.handle === handle);
+  return found ? adaptShopifyCollection(found) : null;
 }
 
-export async function getProduct(handle: string): Promise<Product | null> {
+export async function getProduct(
+  handle: string
+): Promise<Product | null> {
   'use cache';
   cacheTag(TAGS.products);
   cacheLife('minutes');
 
-  try {
-    const shopifyProduct = await getShopifyProduct(handle);
-    return shopifyProduct ? adaptShopifyProduct(shopifyProduct) : null;
-  } catch (error) {
-    console.error('Error fetching product:', error);
-    return null;
-  }
+  const product = await getShopifyProduct(handle);
+  return product ? adaptShopifyProduct(product) : null;
 }
 
 export async function getProducts(params: {
@@ -194,13 +188,8 @@ export async function getProducts(params: {
   cacheTag(TAGS.products);
   cacheLife('minutes');
 
-  try {
-    const shopifyProducts = await getShopifyProducts(params);
-    return shopifyProducts.map(adaptShopifyProduct);
-  } catch (error) {
-    console.error('Error fetching products:', error);
-    return [];
-  }
+  const products = await getShopifyProducts(params);
+  return products.map(adaptShopifyProduct);
 }
 
 export async function getCollectionProducts(params: {
@@ -214,24 +203,13 @@ export async function getCollectionProducts(params: {
   cacheTag(TAGS.collectionProducts);
   cacheLife('minutes');
 
-  try {
-    const shopifyProducts = await getShopifyCollectionProducts(params);
-    return shopifyProducts.map(adaptShopifyProduct);
-  } catch (error) {
-    console.error('Error fetching collection products:', error);
-    return [];
-  }
+  const products = await getShopifyCollectionProducts(params);
+  return products.map(adaptShopifyProduct);
 }
 
 export async function getCart(): Promise<Cart | null> {
-  try {
-    const { getCart: getCartAction } = await import('@/components/cart/actions');
-    return await getCartAction();
-  } catch (error) {
-    console.error('Error fetching cart:', error);
-    return null;
-  }
+  const { getCart } = await import('@/components/cart/actions');
+  return getCart();
 }
 
-// Re-export cart mutation functions (these are properly typed in shopify.ts)
 export { createCart, addCartLines, updateCartLines, removeCartLines };

@@ -3,13 +3,20 @@ import { Collection } from '@/lib/shopify/types';
 import { cn } from '@/lib/utils';
 
 interface ShopLinksProps {
-  collections: Collection[];
+  collections?: Collection[]; // ← change 1
   align?: 'left' | 'right';
   label?: string;
   className?: string;
 }
 
-export function ShopLinks({ collections, label = 'Shop', align = 'left', className }: ShopLinksProps) {
+export function ShopLinks({
+  collections = [], // ← change 2
+  label = 'Shop',
+  align = 'left',
+  className,
+}: ShopLinksProps) {
+  if (!collections.length) return null; // ← change 3 (prevents crash)
+
   return (
     <div className={cn(align === 'right' ? 'text-right' : 'text-left', className)}>
       <h4 className="text-lg font-extrabold md:text-xl">{label}</h4>

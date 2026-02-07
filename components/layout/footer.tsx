@@ -2,13 +2,7 @@ import { LogoSvg } from './header/logo-svg';
 import { ShopLinks } from './shop-links';
 import { SidebarLinks } from './sidebar/product-sidebar-links';
 import { getCollections } from '@/lib/shopify';
-import dynamic from 'next/dynamic';
-
-
-const NewsletterSignup = dynamic(
-  () => import('@/components/newsletter-signup'),
-  { ssr: false }
-);
+import NewsletterClient from './newsletter-client';
 
 
 type FooterProps = {
@@ -26,7 +20,7 @@ export function Footer({ collections }: FooterProps) {
           <div className="flex flex-col gap-4">
             <div>
               <p className="text-sm font-semibold mb-2">Newsletter</p>
-              <NewsletterSignup />
+              <NewsletterClient />
             </div>
 
             <ShopLinks
