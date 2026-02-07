@@ -1,10 +1,15 @@
 import { storeCatalog } from '@/lib/shopify/constants';
 import ProductList from './components/product-list';
-import { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import ResultsControls from './components/results-controls';
 import { ProductGrid } from './components/product-grid';
 import { ProductCardSkeleton } from './components/product-card-skeleton';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   title: 'ACME Store | Shop',
@@ -14,27 +19,28 @@ export const metadata: Metadata = {
 // Enable ISR with 1 minute revalidation
 export const revalidate = 60;
 
-export default async function Shop(props: {
-  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+export default async function Shop({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-  const searchParams = await props.searchParams;
-
   return (
-    <>
-      <Suspense
-        fallback={
-          <>
-            <ResultsControls className="max-md:hidden" collections={[]} products={[]} />
-            <ProductGrid>
-              {Array.from({ length: 12 }).map((_, index) => (
-                <ProductCardSkeleton key={index} />
-              ))}
-            </ProductGrid>
-          </>
-        }
-      >
-        <ProductList collection={storeCatalog.rootCategoryId} searchParams={searchParams} />
-      </Suspense>
-    </>
+    <Suspense
+      fallback={
+        <>
+          <ResultsControls className="max-md:hidden" collections={[]} products={[]} />
+          <ProductGrid>
+            {Array.from({ length: 12 }).map((_, index) => (
+              <ProductCardSkeleton key={index} />
+            ))}
+          </ProductGrid>
+        </>
+      }
+    >
+      <ProductList
+        collection={storeCatalog.rootCategoryId}
+        searchParams={searchParams}
+      />
+    </Suspense>
   );
 }
