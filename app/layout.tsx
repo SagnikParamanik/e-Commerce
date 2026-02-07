@@ -71,7 +71,7 @@ export default async function RootLayout({
                     <Header collections={collections} />
                     {children}
                     {/* ✅ PASS collections to Footer */}
-                    <Footer collections={collections} />
+                   
                   </main>
 
                   {isDevelopment && <DebugGrid />}
