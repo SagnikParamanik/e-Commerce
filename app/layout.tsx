@@ -1,4 +1,4 @@
-import React from "react"
+import React from "react";
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -9,6 +9,7 @@ import { DebugGrid } from '@/components/debug-grid';
 import { isDevelopment } from '@/lib/constants';
 import { getCollections } from '@/lib/shopify';
 import { Header } from '../components/layout/header';
+import { Footer } from '@/components/layout/footer'; // ✅ ADD THIS
 import dynamic from 'next/dynamic';
 import { V0Provider } from '../lib/context';
 import { cn } from '../lib/utils';
@@ -44,15 +45,21 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
+  // ✅ Server-side data fetch (CORRECT PLACE)
   const collections = await getCollections();
 
   return (
     <html lang="en">
       <body
-        className={cn(geistSans.variable, geistMono.variable, 'antialiased min-h-screen', { 'is-v0': isV0 })}
+        className={cn(
+          geistSans.variable,
+          geistMono.variable,
+          'antialiased min-h-screen',
+          { 'is-v0': isV0 }
+        )}
         suppressHydrationWarning
       >
         <V0Provider isV0={isV0}>
@@ -63,13 +70,17 @@ export default async function RootLayout({
                   <main data-vaul-drawer-wrapper="true">
                     <Header collections={collections} />
                     {children}
+                    {/* ✅ PASS collections to Footer */}
+                    <Footer collections={collections} />
                   </main>
+
                   {isDevelopment && <DebugGrid />}
                   <Toaster closeButton position="bottom-right" />
                 </NuqsAdapter>
               </CartProvider>
             </WishlistProvider>
           </AuthProvider>
+
           {isV0 && <V0Setup />}
         </V0Provider>
       </body>
