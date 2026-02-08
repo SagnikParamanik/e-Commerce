@@ -1,15 +1,10 @@
 import { storeCatalog } from '@/lib/shopify/constants';
 import ProductList from './components/product-list';
-import type { Metadata, Viewport } from 'next';
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import ResultsControls from './components/results-controls';
 import { ProductGrid } from './components/product-grid';
 import { ProductCardSkeleton } from './components/product-card-skeleton';
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-};
 
 export const metadata: Metadata = {
   title: 'ACME Store | Shop',

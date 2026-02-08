@@ -3,8 +3,8 @@ import { PageLayout } from '@/components/layout/page-layout';
 import { LatestProductCard } from '@/components/products/latest-product-card';
 import { Badge } from '@/components/ui/badge';
 import { getCollectionProducts, getCollections, getProducts } from '@/lib/shopify';
-import { getLabelPosition } from '../lib/utils';
-import { Product } from '../lib/shopify/types';
+import { getLabelPosition } from '@/lib/utils';
+import { Product } from '@/lib/shopify/types';
 import { HeroSection } from '@/components/home/hero-section';
 import { FeaturesSection } from '@/components/home/features-section';
 
@@ -15,7 +15,9 @@ export default async function Home() {
 
   try {
     if (collections.length > 0) {
-      featuredProducts = await getCollectionProducts({ collection: collections[0].handle });
+      featuredProducts = await getCollectionProducts({
+        collection: collections[0].handle,
+      });
     } else {
       const allProducts = await getProducts({});
       featuredProducts = allProducts.slice(0, 8);
@@ -30,34 +32,42 @@ export default async function Home() {
   return (
     <>
       <HeroSection />
+
       <PageLayout>
         <div className="contents md:grid md:grid-cols-12 md:gap-sides">
           <HomeSidebar collections={collections} />
+
           <div className="flex relative flex-col grid-cols-2 col-span-8 w-full md:grid">
-          <div className="fixed top-0 left-0 z-10 w-full pointer-events-none base-grid py-sides">
-            <div className="col-span-8 col-start-5">
-              <div className="hidden px-6 lg:block">
-                <Badge variant="outline-secondary">latest drop</Badge>
+            <div className="fixed top-0 left-0 z-10 w-full pointer-events-none base-grid py-sides">
+              <div className="col-span-8 col-start-5">
+                <div className="hidden px-6 lg:block">
+                  <Badge variant="outline-secondary">latest drop</Badge>
+                </div>
               </div>
             </div>
-          </div>
-          {featuredProducts.length > 0 && (
-            <>
-              <LatestProductCard className="col-span-2" product={lastProduct} principal />
 
-              {restProducts.map((product: any, index: number) => (
+            {featuredProducts.length > 0 && (
+              <>
                 <LatestProductCard
-                  className="col-span-1"
-                  key={product.id}
-                  product={product}
-                  labelPosition={getLabelPosition(index)}
+                  className="col-span-2"
+                  product={lastProduct}
+                  principal
                 />
-              ))}
-            </>
-          )}
+
+                {restProducts.map((product, index) => (
+                  <LatestProductCard
+                    key={product.id}
+                    className="col-span-1"
+                    product={product}
+                    labelPosition={getLabelPosition(index)}
+                  />
+                ))}
+              </>
+            )}
           </div>
         </div>
       </PageLayout>
+
       <FeaturesSection />
     </>
   );
